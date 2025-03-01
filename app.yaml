@@ -1,0 +1,10 @@
+runtime: python39
+
+# Using the root-level main.py file
+entrypoint: gunicorn -b :$PORT -w 2 -k uvicorn.workers.UvicornWorker server.main:app
+
+instance_class: F1
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1

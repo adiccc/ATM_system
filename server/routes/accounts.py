@@ -4,6 +4,8 @@ from ..services.account_service import AccountService
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
+def get_accounts_router():
+    return router
 
 @router.get("/{account_number}/balance")
 def get_balance(account_number: str):

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from server.routes import accounts
+from .routes.accounts import get_accounts_router
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -13,14 +13,14 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React app's URL
+    allow_origins=["*"],  # Allow all origins in production, or specify your deployed frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-app.include_router(accounts.router)
+app.include_router(get_accounts_router())
 
 
 @app.get("/")
@@ -29,5 +29,9 @@ def read_root():
     return {"message": "Welcome to the ATM System API"}
 
 
+# This is only used when running locally. When deployed to Google Cloud,
+# gunicorn will use the app variable directly
 if __name__ == "__main__":
-    uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

@@ -1,0 +1,2 @@
+def accounts():
+    return None
