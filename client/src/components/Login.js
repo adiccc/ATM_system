@@ -35,14 +35,25 @@ const Login = () => {
     setLoading(true);
 
     try {
+      console.log('Attempting to log in with account number:', accountNumber);
       // Check if account exists by getting balance
-      await apiService.getBalance(accountNumber);
+      const response = await apiService.getBalance(accountNumber);
+      console.log('Login successful, response:', response);
 
       // If we get here, the account exists or was created
       login(accountNumber);
     } catch (err) {
       console.error('Login error:', err);
-      setError('Failed to access account. Please try again.');
+      console.error('Error details:', err.response?.data || err.message);
+
+      let errorMessage = 'Failed to access account. Please try again.';
+
+      // Get specific error from response if available
+      if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      }
+
+      setError(errorMessage);
       setShowError(true);
     } finally {
       setLoading(false);

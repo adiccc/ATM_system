@@ -1,7 +1,16 @@
 // src/services/api.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://localhost:8000';  // Make sure this matches your server address
+
+// Set up axios with more detailed error handling
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
 
 // Create axios instance with base URL
 const api = axios.create({

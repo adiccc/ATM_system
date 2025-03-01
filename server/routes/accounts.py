@@ -10,18 +10,31 @@ def get_balance(account_number: str):
     """Get the current balance of a specific account. Creates account if it doesn't exist."""
     try:
         account = AccountService.get_account(account_number)
-    except Exception:  # Assuming get_account raises an exception when account doesn't exist
-        # Create a new account with balance 0
-        account = AccountService.create_account(account_number, 0)
+    except HTTPException as e:
+        if e.status_code == 404:
+            # Create a new account with balance 0
+            account = AccountService.create_account(account_number)
+        else:
+            raise e
 
     return {
         "account_number": account.account_number,
         "balance": account.balance
     }
+
+
 @router.post("/{account_number}/withdraw", response_model=TransactionResponse)
 def withdraw_money(account_number: str, request: WithdrawRequest):
     """Withdraw a specified amount of money from an account."""
-    return AccountService.withdraw(account_number, request.amount)
+    try:
+        return AccountService.withdraw(account_number, request.amount)
+    except HTTPException as e:
+        if e.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail="Account not found. Please make a balance inquiry first to create the account."
+            )
+        raise e
 
 
 @router.post("/{account_number}/deposit", response_model=TransactionResponse)
