@@ -1,87 +1,82 @@
+from fastapi import APIRouter, HTTPException
+from ..models import WithdrawRequest, DepositRequest, TransactionResponse, Account
+from ..services.account_service import AccountService
 from ..database import db
-from ..models import Account, TransactionResponse
-from fastapi import HTTPException
+
+router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 
+@router.get("/{account_number}/balance")
+def get_balance(account_number: str):
+    """Get the current balance of a specific account. Creates account if it doesn't exist."""
+    try:
+        account = AccountService.get_account(account_number)
+    except HTTPException as e:
+        if e.status_code == 404:
+            # Create a new account with balance 0
+            account = AccountService.create_account(account_number)
+        else:
+            raise e
+
+    return {
+        "account_number": account.account_number,
+        "balance": account.balance
+    }
+
+
+@router.post("/{account_number}/withdraw", response_model=TransactionResponse)
+def withdraw_money(account_number: str, request: WithdrawRequest):
+    """Withdraw a specified amount of money from an account."""
+    try:
+        return AccountService.withdraw(account_number, request.amount)
+    except HTTPException as e:
+        if e.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail="Account not found. Please make a balance inquiry first to create the account."
+            )
+        raise e
+
+
+@router.post("/{account_number}/deposit", response_model=TransactionResponse)
+def deposit_money(account_number: str, request: DepositRequest):
+    """Deposit a specified amount of money into an account."""
+    try:
+        return AccountService.deposit(account_number, request.amount)
+    except HTTPException as e:
+        if e.status_code == 404:
+            # Create account and then deposit
+            account = AccountService.create_account(account_number)
+            account.balance += request.amount
+            db.update_account(account)
+
+            return TransactionResponse(
+                account_number=account.account_number,
+                balance=account.balance,
+                message=f"Account created and ${request.amount:.2f} deposited successfully"
+            )
+        raise e
+
+
+# Add this method to your AccountService class
 class AccountService:
-    """Service for handling account-related business logic."""
+    # ... existing methods ...
 
     @staticmethod
-    def get_account(account_number: str) -> Account:
+    def create_account(account_number: str) -> Account:
         """
-        Get an account by account number.
+        Create a new account with a balance of 0.
 
         Args:
-            account_number: The account number to retrieve
+            account_number: The account number to create
 
         Returns:
-            The account object
-
-        Raises:
-            HTTPException: If the account doesn't exist
+            The newly created account object
         """
-        account = db.get_account(account_number)
-        if not account:
-            raise HTTPException(status_code=404, detail="Account not found")
-        return account
+        # Create a new account object with balance 0
+        new_account = Account(account_number=account_number, balance=0)
 
-    @staticmethod
-    def withdraw(account_number: str, amount: float) -> TransactionResponse:
-        """
-        Withdraw funds from an account.
+        # Save it to the database
+        db.create_account(new_account)
 
-        Args:
-            account_number: The account to withdraw from
-            amount: The amount to withdraw
-
-        Returns:
-            Transaction response with updated balance
-
-        Raises:
-            HTTPException: If the withdrawal cannot be processed
-        """
-        account = AccountService.get_account(account_number)
-
-        if amount <= 0:
-            raise HTTPException(status_code=400, detail="Withdrawal amount must be positive")
-
-        if account.balance < amount:
-            raise HTTPException(status_code=400, detail="Insufficient funds")
-
-        account.balance -= amount
-        db.update_account(account)
-
-        return TransactionResponse(
-            account_number=account.account_number,
-            balance=account.balance,
-            message=f"Successfully withdrew ${amount:.2f}"
-        )
-
-    @staticmethod
-    def deposit(account_number: str, amount: float) -> TransactionResponse:
-        """
-        Deposit funds into an account.
-
-        Args:
-            account_number: The account to deposit to
-            amount: The amount to deposit
-
-        Returns:
-            Transaction response with updated balance
-
-        Raises:
-            HTTPException: If the deposit cannot be processed
-        """
-        account = AccountService.get_account(account_number)
-
-        if amount <= 0:
-            raise HTTPException(status_code=400, detail="Deposit amount must be positive")
-
-        account.balance += amount
-        db.update_account(account)
-
-        return TransactionResponse(
-            account_number=account.account_number,
-            balance=account.balance,
-            message=f"Successfully deposited ${amount:.2f}"
-        )
+        return new_account
