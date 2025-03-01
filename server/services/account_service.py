@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from ..models import WithdrawRequest, DepositRequest, TransactionResponse, Account
-from ..services.account_service import AccountService
 from ..database import db
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
